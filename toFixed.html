@@ -1,0 +1,123 @@
+<script src="./simpletest.js"></script>
+<script>
+
+function toFixedString (value, precision) {
+	
+	var valueAsString = value.toString();
+	var splitString = valueAsString.split('.');
+	var integerPart = splitString[0];
+	var fractionPart = splitString[1];
+	var result;
+
+	//Edge cases
+	if (precision === undefined) {
+		return Math.round(value).toString();
+	}
+
+	if (fractionPart === undefined) {
+		result = integerPart + '.';
+		for (var i = 0; i < precision; i++) {
+			result += '0';
+		}
+		return result;
+	}
+
+	if (fractionPart.length < precision) {
+		for (var i = fractionPart.length; i < precision; i++) {
+			fractionPart += '0';
+		}
+		return result = integerPart + '.' + fractionPart;
+	}
+
+	if (fractionPart.length === precision) {
+		return result = integerPart + '.' + fractionPart;
+	}
+
+	//Base case: Precision is shorter than the given value and must we must round
+
+	//Regex for moving the decimal left or right
+	//1.00 --> 100
+	//1234 --> 12.34
+	var moveDecimalRight = new RegExp('(\\D)(.{' + precision + '})');
+	var moveDecimalLeft = new RegExp('(\\d{' + integerPart.length + '})([0-9]*)');
+	var extraLength9 = integerPart.length + 1;
+	var moveDecimalLeft9 = new RegExp('(\\d{' + extraLength9 + '})([0-9]*)');
+
+	//Exponential form for rounding purposes
+	var exponentialForm = valueAsString.replace(moveDecimalRight, '$2$1');
+	var exponentialSplitString = exponentialForm.split('.');
+	var exponentialIntegerPart = exponentialSplitString[0];
+	var exponentialFractionPart = exponentialSplitString[1];
+
+	//Edge case for 9s causing rollover in other places
+	if (exponentialFractionPart === '9') {
+		result = Math.round(Number(exponentialForm)).toString();
+		if (result.length > exponentialIntegerPart.length) {
+			result = result.replace(moveDecimalLeft9, '$1.$2');
+		} else {
+			result = result.replace(moveDecimalLeft, '$1.$2');
+		}
+		return result;
+	}
+
+	//Regex for replacing last digit with new rounded digit
+	var lastDigit = exponentialIntegerPart.length - 1;
+	var replaceLastDigit = new RegExp('(\\d{' + lastDigit + '})([0-9]*)');
+
+	//Rounds and creates a replacement string for the last digit
+	var roundedString = Math.round(Number(exponentialForm)).toString();
+	var roundedDigit = roundedString.substr(roundedString.length - 1, 1);
+	
+	//Replace last digit on exponentialIntegerPart and move the decimal to its desired location
+	result = exponentialIntegerPart.replace(replaceLastDigit, '$1') + roundedDigit;
+	result = result.replace(moveDecimalLeft, '$1.$2');
+	return result;
+};
+
+tests({
+	
+	'It should return the value rounded to the nearest whole number when no precision is specified': function() {
+    	eq(toFixedString(1), "1");
+    	eq(toFixedString(1.01), "1");
+    	eq(toFixedString(1.5), "2");
+  	},
+  	
+  	'It should return the value with precision number of 0s, if value has no fraction and precision is specified': function () {
+    	eq(toFixedString(1,2), "1.00");
+    	eq(toFixedString(0,2), "0.00");
+  	},
+  	
+  	'It should add 0s to the end while the length of the fraction is less than the precision': function () {
+    	eq(toFixedString(1.126,4), "1.1260");
+  	},
+	
+  	 'It should pass when precision is equal to length of fraction': function() {
+	    eq(toFixedString(0.0615,4), "0.0615");
+  	},
+
+	'It should pass for 10.235': function () {
+    	eq(toFixedString(10.235,2), "10.24");
+  	},
+  	
+  	'It should pass for 0.615': function () {
+    	eq(toFixedString(0.615,2), "0.62");
+  	},
+  	
+  	'It should pass for 1.005': function () {
+    	eq(toFixedString(1.005,2), "1.01");
+  	},
+  	
+  	'It should pass for 9.99': function () {
+    	eq(toFixedString(9.999,2), "10.00");
+  	},
+
+  	'It should round correctly if there are more than one zeros after the dot': function() {    
+    	eq(toFixedString(0.00265,3), "0.003");
+    	eq(toFixedString(10.00244,3), "10.002");
+  	}
+
+});
+
+
+
+</script>
